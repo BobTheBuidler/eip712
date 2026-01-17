@@ -123,3 +123,4 @@ version.py
 # IDE files
 .idea
 .vscode
+.worktrees/
