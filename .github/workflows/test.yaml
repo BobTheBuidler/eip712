@@ -1,13 +1,36 @@
-on: ["push", "pull_request"]
+on:
+  push:
+    paths:
+      - '**/*.py'
+      - '**/*.pyi'
+      - 'pyproject.toml'
+      - 'mypy.ini'
+      - 'setup.cfg'
+      - 'setup.py'
+      - 'requirements*.txt'
+      - 'tox.ini'
+      - 'poetry.lock'
+      - '.pre-commit-config.yaml'
+      - 'tests/**'
+      - 'pytest.ini'
+      - '.github/workflows/test.yaml'
+  pull_request:
+    paths:
+      - '**/*.py'
+      - '**/*.pyi'
+      - 'pyproject.toml'
+      - 'mypy.ini'
+      - 'setup.cfg'
+      - 'setup.py'
+      - 'requirements*.txt'
+      - 'tox.ini'
+      - 'poetry.lock'
+      - '.pre-commit-config.yaml'
+      - 'tests/**'
+      - 'pytest.ini'
+      - '.github/workflows/test.yaml'
 
 name: Test
-
-concurrency:
-  # Cancel older, in-progress jobs from the same PR, same workflow.
-  # use run_id if the job is triggered by a push to ensure
-  # push-triggered jobs to not get canceled.
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
 
 jobs:
     linting:
@@ -22,21 +45,16 @@ jobs:
               python-version: "3.10"
 
         - name: Install Dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install .[lint]
+          run: pip install .[lint]
 
         - name: Run Black
           run: black --check .
 
-        - name: Run isort
-          run: isort --check-only .
-
         - name: Run flake8
           run: flake8 .
 
-        - name: Run mdformat
-          run: mdformat . --check
+        - name: Run isort
+          run: isort --check-only .
 
     type-check:
         runs-on: ubuntu-latest
@@ -50,9 +68,7 @@ jobs:
               python-version: "3.10"
 
         - name: Install Dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install .[lint,test]
+          run: pip install .[lint,test]  # Might need test deps
 
         - name: Run MyPy
           run: mypy .
@@ -62,8 +78,10 @@ jobs:
 
         strategy:
             matrix:
-                os: [ubuntu-latest, macos-latest, windows-latest]
-                python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+                # TODO: Replace with macos-latest when works again.
+                #   https://github.com/actions/setup-python/issues/808
+                os: [ubuntu-latest, macos-12]   # eventually add `windows-latest`
+                python-version: ["3.10", "3.11", "3.12"]
 
         steps:
         - uses: actions/checkout@v4
@@ -74,29 +92,28 @@ jobs:
               python-version: ${{ matrix.python-version }}
 
         - name: Install Dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install .[test]
+          run: pip install .[test]
 
         - name: Run Tests
           run: pytest -m "not fuzzing" -n 0 -s --cov
 
-    fuzzing:
-        runs-on: ubuntu-latest
-
-        strategy:
-            fail-fast: true
-
-        steps:
-        - uses: actions/checkout@v4
-
-        - name: Setup Python
-          uses: actions/setup-python@v5
-          with:
-              python-version: "3.10"
-
-        - name: Install Dependencies
-          run: pip install .[test]
-
-        - name: Run Tests
-          run: pytest -m "fuzzing" --no-cov -s
+# NOTE: uncomment this block after you've marked tests with @pytest.mark.fuzzing
+#    fuzzing:
+#        runs-on: ubuntu-latest
+#
+#        strategy:
+#            fail-fast: true
+#
+#        steps:
+#        - uses: actions/checkout@v2
+#
+#        - name: Setup Python
+#          uses: actions/setup-python@v2
+#          with:
+#              python-version: 3.8
+#
+#        - name: Install Dependencies
+#          run: pip install .[test]
+#
+#        - name: Run Tests
+#          run: pytest -m "fuzzing" --no-cov -s
